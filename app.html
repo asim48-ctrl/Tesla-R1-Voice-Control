@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+    <meta charset=\"UTF-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <title>Tesla R1 Voice Control</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .container { background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 500px; width: 100%; padding: 40px; overflow-y: auto; max-height: 90vh; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #1a1a1a; font-size: 28px; margin-bottom: 8px; }
+        .header p { color: #666; font-size: 14px; }
+        .section { margin-bottom: 30px; }
+        .section-title { font-size: 14px; font-weight: 600; color: #333; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .section-title::before { content: \"\"; width: 3px; height: 16px; background: #667eea; border-radius: 2px; }
+        .auth-box { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 12px; text-align: center; }
+        .auth-box input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; font-family: Monaco, \"Courier New\", monospace; margin-bottom: 15px; }
+        .auth-box input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .button { width: 100%; padding: 12px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px; }
+        .button-primary { background: #667eea; color: white; }
+        .button-primary:hover:not(:disabled) { background: #5568d3; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3); }
+        .button-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .button-secondary { background: #e0e0e0; color: #333; margin-top: 8px; }
+        .button-secondary:hover:not(:disabled) { background: #d0d0d0; }
+        .divider { text-align: center; color: #999; font-size: 13px; margin: 15px 0; position: relative; }
+        .divider::before { content: \"\"; position: absolute; left: 0; top: 50%; width: 40%; height: 1px; background: #ddd; }
+        .divider::after { content: \"\"; position: absolute; right: 0; top: 50%; width: 40%; height: 1px; background: #ddd; }
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .status-card { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 12px; padding: 15px; text-align: center; }
+        .status-label { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .status-value { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+        .status-value.locked { color: #10b981; }
+        .status-value.unlocked { color: #ef4444; }
+        .status-value.sentry-on { color: #f59e0b; }
+        .status-value.sentry-off { color: #6b7280; }
+        .commands-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .cmd-btn { padding: 14px 12px; background: #f0f0f0; border: 2px solid #ddd; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #333; }
+        .cmd-btn:hover:not(:disabled) { border-color: #667eea; background: #f0f0ff; transform: translateY(-1px); }
+        .cmd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .cmd-btn span:first-child { font-size: 18px; }
+        .voice-section { background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%); border: 2px dashed #667eea; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; }
+        .voice-button { width: 100%; padding: 16px; background: #667eea; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; }
+        .voice-button:hover:not(:disabled) { background: #5568d3; transform: scale(1.02); }
+        .voice-button:disabled { opacity: 0.7; cursor: not-allowed; }
+        .voice-button.listening { background: #ef4444; animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } }
+        .transcript { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; font-size: 13px; color: #666; font-style: italic; margin-top: 10px; min-height: 30px; max-height: 80px; overflow-y: auto; }
+        .scheduled-tasks { background: #f0f0ff; border: 1px solid #ddd; border-radius: 12px; padding: 15px; margin-bottom: 20px; }
+        .task-item { background: white; border-left: 3px solid #667eea; padding: 10px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        .task-info { flex: 1; }
+        .task-action { font-weight: 600; color: #667eea; margin-bottom: 2px; }
+        .task-time { color: #999; font-size: 12px; }
+        .task-cancel { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; margin-left: 8px; }
+        .task-cancel:hover { background: #dc2626; }
+        .message { padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .message.success { background: #d1fae5; color: #065f46; border-left: 3px solid #10b981; }
+        .message.error { background: #fee2e2; color: #7f1d1d; border-left: 3px solid #ef4444; }
+        .message.info { background: #dbeafe; color: #0c2d6b; border-left: 3px solid #3b82f6; }
+        .hidden { display: none; }
+        .refresh-status { text-align: center; margin-top: 15px; }
+        .refresh-status button { padding: 8px 16px; font-size: 12px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .refresh-status button:hover { background: #e0e0e0; }
+        #videoPreview { width: 100%; border-radius: 8px; margin-bottom: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <div class=\"container\">
+        <div class=\"header\"><h1>Tesla R1 Voice</h1><p>Voice-controlled Tesla commands</p></div>
+        <div id=\"authSection\" class=\"section hidden\">
+            <div class=\"section-title\">Setup</div>
+            <div class=\"auth-box\">
+                <div class=\"qr-scanner-section\"><button class=\"button button-primary\" onclick=\"startQRScan()\">Scan QR Code</button><video id=\"videoPreview\"></video><p class=\"qr-hint\">Point camera at your refresh token QR code</p></div>
+                <div class=\"divider\">OR</div><input type=\"password\" id=\"refreshToken\" placeholder=\"Paste refresh token manually\"><button class=\"button button-secondary\" onclick=\"authenticateManual()\">Connect Manually</button>
+            </div>
+        </div>
+        <div id=\"controlSection\" class=\"section hidden\">
+            <div class=\"section-title\">Vehicle Status</div>
+            <div class=\"status-grid\">
+                <div class=\"status-card\"><div class=\"status-label\">Temperature</div><div class=\"status-value\" id=\"tempStatus\">--°C</div></div>
+                <div class=\"status-card\"><div class=\"status-label\">Door Lock</div><div class=\"status-value\" id=\"lockStatus\">--</div></div>
+                <div class=\"status-card\"><div class=\"status-label\">Sentry Mode</div><div class=\"status-value\" id=\"sentryStatus\">--</div></div>
+                <div class=\"status-card\"><div class=\"status-label\">Battery</div><div class=\"status-value\" id=\"batteryStatus\">--%</div></div>
+            </div>
+            <div class=\"refresh-status\"><button onclick=\"refreshStatus()\">Refresh Status</button></div>
+        </div>
+        <div id=\"tasksSection\" class=\"section hidden\"><div class=\"section-title\">Scheduled Tasks</div><div id=\"tasksList\" class=\"scheduled-tasks\"><p style=\"color: #999; text-align: center;\">No scheduled tasks</p></div></div>
+        <div class=\"section\">
+            <div class=\"section-title\">Voice Commands</div>
+            <div class=\"voice-section\"><div style=\"margin-bottom: 15px;\"><span style=\"color: #667eea; font-weight: 600;\">Try saying:</span><br><span style=\"font-size: 12px; color: #666;\">\"warm the car\", \"lock the car\", \"warm in 10 minutes\"</span></div><button class=\"voice-button\" id=\"voiceBtn\" onclick=\"toggleVoiceControl()\"><span>🎤</span> Press to Speak</button><div id=\"transcript\" class=\"transcript\" style=\"display: none;\"></div></div>
+        </div>
+        <div class=\"section\">
+            <div class=\"section-title\">Manual Controls</div>
+            <div class=\"commands-grid\">
+                <button class=\"cmd-btn\" onclick=\"warmCar()\"><span>🔥</span><span>Warm Car</span></button><button class=\"cmd-btn\" onclick=\"coolCar()\"><span>❄️</span><span>Cool Car</span></button><button class=\"cmd-btn\" onclick=\"lockDoors()\"><span>🔒</span><span>Lock</span></button><button class=\"cmd-btn\" onclick=\"unlockDoors()\"><span>🔓</span><span>Unlock</span></button><button class=\"cmd-btn\" onclick=\"toggleSentry()\"><span>🛡️</span><span>Sentry</span></button><button class=\"cmd-btn\" onclick=\"flashLights()\"><span>💡</span><span>Flash</span></button>
+            </div>
+        </div>
+        <div class=\"section\"><button class=\"button button-secondary\" onclick=\"logout()\">Logout</button></div><div id=\"messages\"></div>
+    </div>
+    <script src=\"https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js\"></script>
+    <script>
+        const FLEET_API_BASE = 'https://fleet-api.tesla.com'; const TOKEN_ENDPOINT = 'https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token';
+        let state = { refreshToken: localStorage.getItem('teslaRefreshToken'), accessToken: localStorage.getItem('teslaAccessToken'), vehicleId: localStorage.getItem('teslaVehicleId'), isListening: false, currentTemperature: null, scheduledTasks: JSON.parse(localStorage.getItem('teslaScheduledTasks') || '[]'), isScanning: false };
+        window.addEventListener('load', () => { if (state.refreshToken) { document.getElementById('controlSection').classList.remove('hidden'); document.getElementById('authSection').classList.add('hidden'); refreshStatus(); setInterval(refreshStatus, 60000); restoreScheduledTasks(); setInterval(processScheduledTasks, 10000); } else { document.getElementById('authSection').classList.remove('hidden'); document.getElementById('controlSection').classList.add('hidden'); } });
+        async function startQRScan() { const video = document.getElementById('videoPreview'); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); video.srcObject = stream; video.style.display = 'block'; video.play(); state.isScanning = true; scanQRCode(video); showMessage('Camera active - hold QR code in view', 'info'); } catch (err) { showMessage('Camera access denied', 'error'); } }
+        function scanQRCode(video) { const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); function scan() { if (!state.isScanning) return; if (video.readyState === video.HAVE_ENOUGH_DATA) { canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height); const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); const code = jsQR(imageData.data, canvas.width, canvas.height); if (code) { const tokenValue = code.data.trim(); if (tokenValue.length > 50) { stopQRScan(video); authenticateWithToken(tokenValue); return; } } } requestAnimationFrame(scan); } scan(); }
+        function stopQRScan(video) { state.isScanning = false; if (video.srcObject) { video.srcObject.getTracks().forEach(track => track.stop()); } video.style.display = 'none'; }
+        async function authenticateWithToken(token) { state.refreshToken = token; localStorage.setItem('teslaRefreshToken', token); try { showMessage('Token scanned! Connecting...', 'success'); await refreshAccessToken(); showMessage('Connected!', 'success'); location.reload(); } catch (err) { showMessage('Auth failed: ' + err.message, 'error'); } }
+        async function authenticateManual() { const token = document.getElementById('refreshToken').value.trim(); if (token) authenticateWithToken(token); }
+        async function refreshAccessToken() { const response = await fetch(TOKEN_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'refresh_token', client_id: 'c752645ff89feb8e0ab8df32d1e0a2c13bdfa0de6ee5fcafde38206da1f36c9d', refresh_token: state.refreshToken }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); state.accessToken = data.access_token; if (data.refresh_token) { state.refreshToken = data.refresh_token; localStorage.setItem('teslaRefreshToken', data.refresh_token); } localStorage.setItem('teslaAccessToken', data.access_token); }
+        async function getVehicles() { if (!state.accessToken) await refreshAccessToken(); const response = await fetch(FLEET_API_BASE + '/api/1/vehicles', { headers: { 'Authorization': 'Bearer ' + state.accessToken } }); const data = await response.json(); if (data.response && data.response.length > 0) { state.vehicleId = data.response[0].id_str; localStorage.setItem('teslaVehicleId', state.vehicleId); return data.response[0]; } throw new Error('No vehicles found'); }
+        async function refreshStatus() { try { const vehicle = await getVehicles(); const response = await fetch(FLEET_API_BASE + `/api/1/vehicles/${vehicle.vin}/vehicle_data`, { headers: { 'Authorization': 'Bearer ' + state.accessToken } }); const data = await response.json(); const res = data.response; document.getElementById('tempStatus').textContent = Math.round(res.climate_state.inside_temp) + '°C'; document.getElementById('lockStatus').textContent = res.vehicle_state.locked ? 'Locked' : 'Unlocked'; document.getElementById('sentryStatus').textContent = res.vehicle_state.sentry_mode ? 'ON' : 'OFF'; document.getElementById('batteryStatus').textContent = res.charge_state.battery_level + '%'; } catch (err) { console.error(err); } }
+        async function sendCommand(endpoint, payload = {}) { if (!state.vehicleId) await getVehicles(); const response = await fetch(FLEET_API_BASE + `/api/1/vehicles/${state.vehicleId}/command/${endpoint}`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + state.accessToken, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); return response.json(); }
+        async function warmCar() { showMessage('Warming...', 'info'); await sendCommand('auto_conditioning_start'); }
+        async function coolCar() { showMessage('Cooling...', 'info'); await sendCommand('auto_conditioning_start'); }
+        async function lockDoors() { await sendCommand('door_lock'); refreshStatus(); }
+        async function unlockDoors() { await sendCommand('door_unlock'); refreshStatus(); }
+        async function toggleSentry() { const isOn = document.getElementById('sentryStatus').textContent === 'ON'; await sendCommand('set_sentry_mode', { on: !isOn }); refreshStatus(); }
+        async function flashLights() { await sendCommand('flash_lights'); }
+        function showMessage(text, type) { const msg = document.createElement('div'); msg.className = 'message ' + type; msg.textContent = text; document.getElementById('messages').prepend(msg); setTimeout(() => msg.remove(), 5000); }
+        function logout() { localStorage.clear(); location.reload(); }
+        function toggleVoiceControl() { const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SpeechRecognition) return showMessage('Voice not supported', 'error'); const recognition = new SpeechRecognition(); recognition.onstart = () => { state.isListening = true; document.getElementById('voiceBtn').classList.add('listening'); }; recognition.onresult = (event) => { const cmd = event.results[0][0].transcript.toLowerCase(); document.getElementById('transcript').textContent = cmd; document.getElementById('transcript').style.display = 'block'; handleCommand(cmd); }; recognition.onend = () => { state.isListening = false; document.getElementById('voiceBtn').classList.remove('listening'); }; recognition.start(); }
+        function handleCommand(cmd) { if (cmd.includes('warm')) warmCar(); else if (cmd.includes('cool')) coolCar(); else if (cmd.includes('lock')) lockDoors(); else if (cmd.includes('unlock')) unlockDoors(); else if (cmd.includes('sentry')) toggleSentry(); else if (cmd.includes('flash')) flashLights(); }
+        function restoreScheduledTasks() { updateTasksDisplay(); }
+        function processScheduledTasks() { }
+        function updateTasksDisplay() { }
+    </script>
+</body>
+</html>
