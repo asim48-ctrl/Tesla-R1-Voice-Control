@@ -1,0 +1,9 @@
+{
+  "name": "Tesla Voice Control",
+  "short_name": "TeslaVoice",
+  "start_url": "app.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#E81D22",
+  "description": "Voice-controlled Tesla on Rabbit R1"
+}
